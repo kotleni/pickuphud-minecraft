@@ -11,7 +11,7 @@ import net.minecraft.util.Colors
 object PickupsMessagesRenderer {
     private fun generateLine(message: PickupMessage): String {
         return when(message) {
-            is PickupMessage.Item -> "${message.stack.itemName.string} +${message.increaseCount} (${message.totalCount})"
+            is PickupMessage.Item -> "${message.stack.item.name.string} +${message.increaseCount} (${message.totalCount})"
             is PickupMessage.ExperienceOrb -> "Experience +${message.increaseCount} (${message.totalCount})"
         };
     }

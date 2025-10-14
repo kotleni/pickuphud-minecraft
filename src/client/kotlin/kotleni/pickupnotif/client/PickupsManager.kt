@@ -16,7 +16,7 @@ class PickupsManager {
         cleanup()
 
         val prevMessage = pickupMessages.filter { it is PickupMessage.Item }
-            .find { (it as PickupMessage.Item).stack.itemName == stack.itemName } as? PickupMessage.Item?
+            .find { (it as PickupMessage.Item).stack.item.name == stack.item.name } as? PickupMessage.Item?
 
         if(prevMessage != null) {
             prevMessage.increaseCount += stack.count

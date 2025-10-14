@@ -35,11 +35,19 @@ class PickupnotifClient : ClientModInitializer {
     }
 
     private fun onPickupItem(player: PlayerEntity, stack: ItemStack) {
-        val totalCount = client.player?.inventory
+        val mainCount = client.player?.inventory
+            ?.main
             ?.toList()
-            ?.filter { it.itemName == stack.itemName }
+            ?.filter { it.item.name == stack.item.name }
             ?.map { it.count }
             ?.reduce { a, b -> a + b } ?: -1
+        val offHandCount = client.player?.inventory
+            ?.offHand
+            ?.toList()
+            ?.filter { it.item.name == stack.item.name }
+            ?.map { it.count }
+            ?.reduce { a, b -> a + b } ?: -1
+        val totalCount = mainCount + offHandCount
 
         pickupsManager.addItemPickup(stack, totalCount);
     }
