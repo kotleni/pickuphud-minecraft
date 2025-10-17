@@ -30,7 +30,7 @@ class ModSettingsScreen(private val parent: Screen?) : Screen(Text.literal("")) 
         addDrawableChild(
             CyclingButtonWidget.onOffBuilder(Text.literal("Enable"), Text.literal("Disable"))
                 .initially(setting.getValue(modConfigCopy))
-                ?.optionTextOmitted(true)
+                ?.omitKeyText()
                 ?.build(
                     this.width / 2 + 5,
                     (this.height / 6) + yOffset,
