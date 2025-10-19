@@ -13,7 +13,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(ExperienceOrbEntity.class)
 public abstract class ExperienceOrbEntityMixin {
     @Shadow
-    public abstract int getValue();
+    public abstract int getExperienceAmount();
 
     @Inject(
             method = "onPlayerCollision", at = @At(
@@ -22,7 +22,7 @@ public abstract class ExperienceOrbEntityMixin {
     )
     private void onPickup(PlayerEntity player, CallbackInfo ci) {
         if (player instanceof ServerPlayerEntity serverPlayer) {
-            ExperienceOrbPickupCallback.EVENT.invoker().onPickup(serverPlayer, this.getValue());
+            ExperienceOrbPickupCallback.EVENT.invoker().onPickup(serverPlayer, this.getExperienceAmount());
         }
     }
 }

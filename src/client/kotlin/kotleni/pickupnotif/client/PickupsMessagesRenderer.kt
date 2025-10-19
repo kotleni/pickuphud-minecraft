@@ -82,11 +82,11 @@ object PickupsMessagesRenderer {
                 val iconY = backgroundY + (backgroundHeight / 2) - (scaledItemSize / 2)
 
                 val matrices = drawContext.matrices
-                matrices.pushMatrix() // Save the current matrix state
+                matrices.push() // Save the current matrix state
 
                 // We need to translate to the icon's position, scale, and then draw at (0,0)
-                matrices.translate(iconX.toFloat(), iconY.toFloat())
-                matrices.scale(iconScale, iconScale)
+                matrices.translate(iconX.toFloat(), iconY.toFloat(), 0f)
+                matrices.scale(iconScale, iconScale, 1f)
 
                 // Draw the item at the new, scaled-down origin
                 when (message) {
@@ -94,7 +94,7 @@ object PickupsMessagesRenderer {
                     is PickupMessage.ExperienceOrb -> drawContext.drawItem(Items.EXPERIENCE_BOTTLE.defaultStack, 0, 0)
                 }
 
-                matrices.popMatrix() // Restore the matrix to its original state
+                matrices.pop() // Restore the matrix to its original state
             }
 
             // --- Draw Text ---

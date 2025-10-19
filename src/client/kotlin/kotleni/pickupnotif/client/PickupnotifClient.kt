@@ -36,6 +36,7 @@ class PickupnotifClient : ClientModInitializer {
 
     private fun onPickupItem(player: PlayerEntity, stack: ItemStack) {
         val totalCount = player.inventory
+            ?.main
             ?.toList()
             ?.filter { it.itemName == stack.itemName }
             ?.map { it.count }
