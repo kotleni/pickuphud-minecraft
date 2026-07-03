@@ -8,18 +8,21 @@ import kotleni.pickuphud.settings.ModSettingValue
 import kotleni.pickuphud.settings.behaviorSettings
 import kotleni.pickuphud.settings.renderingSettings
 import kotleni.pickuphud.ui.widgets.IntSliderWidget
-import net.minecraft.client.gui.DrawContext
-import net.minecraft.client.gui.screen.Screen
-import net.minecraft.client.gui.widget.ButtonWidget
-import net.minecraft.client.gui.widget.CyclingButtonWidget
-import net.minecraft.client.gui.widget.TextWidget
-import net.minecraft.item.ItemStack
-import net.minecraft.item.Items
-import net.minecraft.text.Text
-import net.minecraft.util.Colors
-import net.minecraft.util.Formatting
+import net.minecraft.client.gui.screens.Screen
+import net.minecraft.client.gui.components.Button
+import net.minecraft.client.gui.components.CycleButton
+import net.minecraft.client.gui.components.StringWidget
+import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.Items
+import net.minecraft.network.chat.Component
+import net.minecraft.ChatFormatting
+import net.minecraft.client.gui.GuiGraphicsExtractor // 26.1 rename
+import net.minecraft.client.DeltaTracker
+import net.minecraft.client.gui.components.events.GuiEventListener
+import net.minecraft.client.gui.components.Renderable
+import net.minecraft.client.gui.narration.NarratableEntry
 
-class ModSettingsScreen(private val parent: Screen?) : Screen(Text.literal("")) {
+class ModSettingsScreen(private val parent: Screen?) : Screen(Component.literal("")) {
     private data class SettingsPage(
         val title: String,
         val settings: List<ModSetting<out Any>>,
@@ -52,39 +55,33 @@ class ModSettingsScreen(private val parent: Screen?) : Screen(Text.literal("")) 
         val lastIndex = pages.lastIndex
         currentPageIndex = (currentPageIndex + delta + pages.size) % pages.size
         currentPageIndex = currentPageIndex.coerceIn(0, lastIndex)
-        clearAndInit()
+        rebuildWidgets()
     }
 
     private fun addSettingToggle(setting: ModSetting<Boolean>) {
         val rowY = 54 + yOffset
 
-        addDrawableChild(TextWidget(
+        addRenderableWidget(StringWidget(
             this.width / 2 - 155,
             rowY,
             150,
             20,
-            Text.literal(setting.title),
-            textRenderer,
+            Component.literal(setting.title),
+            font,
         ))
 
-        addDrawableChild(
-            CyclingButtonWidget.onOffBuilder(
-                Text.literal("Enabled").formatted(Formatting.GREEN),
-                Text.literal("Disabled").formatted(Formatting.RED),
-                setting.getValue(modConfigCopy),
-            )
-                .omitKeyText()
-                .build(
-                    this.width / 2 + 5,
-                    rowY,
-                    150,
-                    20,
-                    Text.empty(),
-                ) { _: CyclingButtonWidget<Boolean?>?, value: Boolean ->
-                    setting.setValue(modConfigCopy, value)
-                }
-        )
+        val toggleButton = CycleButton.onOffBuilder(setting.getValue(modConfigCopy))
+            .create(
+                this.width / 2 + 5,
+                rowY,
+                150,
+                20,
+                Component.literal(setting.title)
+            ) { _, value: Boolean ->
+                setting.setValue(modConfigCopy, value)
+            }
 
+        addRenderableWidget(toggleButton)
         yOffset += 24
     }
 
@@ -92,34 +89,34 @@ class ModSettingsScreen(private val parent: Screen?) : Screen(Text.literal("")) 
         val intValue = setting.value as ModSettingValue.ValueInt
         val rowY = 54 + yOffset
 
-        addDrawableChild(TextWidget(
+        addRenderableWidget(StringWidget(
             this.width / 2 - 155,
             rowY,
             150,
             20,
-            Text.literal(setting.title),
-            textRenderer,
+            Component.literal(setting.title),
+            font,
         ))
 
-        addDrawableChild(
-            IntSliderWidget(
-                this.width / 2 + 5,
-                rowY,
-                150,
-                20,
-                Text.literal(setting.title),
-                setting.getValue(modConfigCopy),
-                intValue.min,
-                intValue.max,
-                onChangeValue = { newValue ->
-                    setting.setValue(modConfigCopy, newValue)
-                },
-            )
+        val slider = IntSliderWidget(
+            this.width / 2 + 5,
+            rowY,
+            150,
+            20,
+            Component.literal(setting.title),
+            setting.getValue(modConfigCopy),
+            intValue.min,
+            intValue.max,
+            onChangeValue = { newValue ->
+                setting.setValue(modConfigCopy, newValue)
+            },
         )
 
+        addRenderableWidget(slider)
         yOffset += 24
     }
 
+    @Suppress("UNCHECKED_CAST")
     private fun addSettingItem(setting: ModSetting<out Any>) {
         when (setting.value) {
             is ModSettingValue.ValueBoolean -> addSettingToggle(setting as ModSetting<Boolean>)
@@ -131,19 +128,19 @@ class ModSettingsScreen(private val parent: Screen?) : Screen(Text.literal("")) 
     override fun init() {
         yOffset = 0
 
-        addDrawableChild(
-            ButtonWidget.Builder(Text.literal("<")) {
+        addRenderableWidget(
+            Button.builder(Component.literal("<")) { _ ->
                 switchPage(-1)
             }
-                .dimensions(this.width / 2 - 90, 26, 20, 20)
+                .bounds(this.width / 2 - 90, 26, 20, 20)
                 .build()
         )
 
-        addDrawableChild(
-            ButtonWidget.Builder(Text.literal(">")) {
+        addRenderableWidget(
+            Button.builder(Component.literal(">")) { _ ->
                 switchPage(1)
             }
-                .dimensions(this.width / 2 + 70, 26, 20, 20)
+                .bounds(this.width / 2 + 70, 26, 20, 20)
                 .build()
         )
 
@@ -151,66 +148,68 @@ class ModSettingsScreen(private val parent: Screen?) : Screen(Text.literal("")) 
             addSettingItem(setting)
         }
 
-        addDrawableChild(
-            ButtonWidget.Builder(Text.literal("Tracked Items...")) {
-                client?.setScreen(TrackedItemsScreen(this, modConfigCopy))
+        addRenderableWidget(
+            Button.builder(Component.literal("Tracked Items...")) { _ ->
+                minecraft?.setScreen(TrackedItemsScreen(this as Screen, modConfigCopy))
             }
-                .dimensions(this.width / 2 - 60, this.height - 56, 120, 20)
+                .bounds(this.width / 2 - 60, this.height - 56, 120, 20)
                 .build()
         )
 
-        addDrawableChild(
-            ButtonWidget.Builder(Text.literal("Cancel")) {
-                close()
+        addRenderableWidget(
+            Button.builder(Component.literal("Cancel")) { _ ->
+                onClose()
             }
-                .dimensions(this.width / 2 - 205, this.height - 28, 200, 20)
+                .bounds(this.width / 2 - 205, this.height - 28, 200, 20)
                 .build()
         )
 
-        addDrawableChild(
-            ButtonWidget.Builder(Text.literal("Save & Quit")) {
+        addRenderableWidget(
+            Button.builder(Component.literal("Save & Quit")) { _ ->
                 ModConfig.INSTANCE.apply(modConfigCopy)
                 ModConfig.save()
-                close()
+                onClose()
             }
-                .dimensions(this.width / 2 + 5, this.height - 28, 200, 20)
+                .bounds(this.width / 2 + 5, this.height - 28, 200, 20)
                 .build()
         )
     }
 
-    override fun render(context: DrawContext, mouseX: Int, mouseY: Int, deltaTicks: Float) {
+    override fun render(context: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, deltaTracker: DeltaTracker) {
         val now = System.currentTimeMillis()
         val previewMessages = buildPreviewMessages(now)
-        PickupsMessagesRenderer.render(context, textRenderer, previewMessages, modConfigCopy)
 
-        super.render(context, mouseX, mouseY, deltaTicks)
+        // Ensure PickupsMessagesRenderer is also updated to take GuiGraphicsExtractor
+        PickupsMessagesRenderer.render(context, font, previewMessages, modConfigCopy)
 
-        context.drawCenteredTextWithShadow(
-            textRenderer,
-            Text.literal("Pickup HUD Configuration"),
+        super.render(context, mouseX, mouseY, deltaTracker)
+
+        context.centeredText(
+            font,
+            Component.literal("Pickup HUD Configuration"),
             this.width / 2,
             8,
-            Colors.WHITE,
+            0xFFFFFF,
         )
 
-        context.drawCenteredTextWithShadow(
-            textRenderer,
-            Text.literal("Page ${currentPageIndex + 1}/${pages.size} - ${pages[currentPageIndex].title}"),
+        context.centeredText(
+            font,
+            Component.literal("Page ${currentPageIndex + 1}/${pages.size} - ${pages[currentPageIndex].title}"),
             this.width / 2,
             32,
-            Colors.WHITE,
+            0xFFFFFF,
         )
 
-        context.drawCenteredTextWithShadow(
-            textRenderer,
-            Text.literal("Tip: Change 'Open Tracked Items' in Controls -> Key Binds -> Pickup HUD"),
+        context.centeredText(
+            font,
+            Component.literal("Tip: Change 'Open Tracked Items' in Controls -> Key Binds -> Pickup HUD"),
             this.width / 2,
             this.height - 68,
             0xD6D6D6,
         )
     }
 
-    override fun close() {
-        client?.setScreen(parent)
+    override fun onClose() {
+        minecraft?.setScreen(parent)
     }
 }

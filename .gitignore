@@ -1,6 +1,7 @@
 .gradle/
 .kotlin/
 .vscode/
+.idea/
 
 run/
 build/
