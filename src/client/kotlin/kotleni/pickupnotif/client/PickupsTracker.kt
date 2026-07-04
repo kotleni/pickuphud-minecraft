@@ -1,19 +1,18 @@
 package kotleni.pickupnotif.client
 
 import kotleni.pickuphud.ModConfig
-import net.minecraft.client.MinecraftClient
-import net.minecraft.entity.player.PlayerEntity
-import net.minecraft.item.Item
-import net.minecraft.item.ItemStack
-import net.minecraft.registry.Registries
-import net.minecraft.sound.SoundEvents
-import net.minecraft.util.Identifier
+import net.minecraft.client.Minecraft
+import net.minecraft.world.entity.player.Player
+import net.minecraft.world.item.Item
+import net.minecraft.world.item.ItemStack
+import net.minecraft.core.registries.BuiltInRegistries
+import net.minecraft.sounds.SoundEvents
+import net.minecraft.resources.Identifier
 
 class PickupsTracker(
-    private val client: MinecraftClient,
+    private val client: Minecraft,
     private val pickupsManager: PickupsManager,
 ) {
-    // Keep this lightweight: 3 ticks ~= 150ms at 20 TPS.
     private val scanIntervalTicks = 3
 
     private var isInitialized = false
@@ -26,12 +25,12 @@ class PickupsTracker(
     private var cachedTrackedCsv = ""
     private var cachedTrackedItems: Set<Item>? = null
 
-    private fun collectInventoryCounts(player: PlayerEntity): HashMap<Item, Int> {
+    private fun collectInventoryCounts(player: Player): HashMap<Item, Int> {
         currentItemCounts.clear()
 
         val inventory = player.inventory
-        for (slot in 0 until inventory.size()) {
-            val stack = inventory.getStack(slot)
+        for (slot in 0 until inventory.containerSize) {
+            val stack = inventory.getItem(slot)
             if (stack.isEmpty) continue
 
             val item = stack.item
@@ -55,9 +54,9 @@ class PickupsTracker(
             return
         }
 
-        if (player.age == lastProcessedPlayerAge) return
-        if (player.age % scanIntervalTicks != 0) return
-        lastProcessedPlayerAge = player.age
+        if (player.tickCount == lastProcessedPlayerAge) return
+        if (player.tickCount % scanIntervalTicks != 0) return
+        lastProcessedPlayerAge = player.tickCount
 
         val currentCounts = collectInventoryCounts(player)
         val currentExperience = player.totalExperience
@@ -88,9 +87,8 @@ class PickupsTracker(
             if (isTrackedItem && cfg.isPlaySoundOnTrackedItem) {
                 val volume = (cfg.pickupSoundVolume.coerceIn(0, 100) / 100f) * 1.45f
                 if (volume > 0f) {
-                    // Strong audible ding for rare tracked drops (e.g. wither skull farming).
-                    player.playSound(SoundEvents.ENTITY_PLAYER_LEVELUP, volume.coerceAtMost(1.7f), 1.8f)
-                    player.playSound(SoundEvents.BLOCK_NOTE_BLOCK_BELL.value(), volume.coerceAtMost(1.7f), 1.95f)
+                    player.playSound(SoundEvents.PLAYER_LEVELUP, volume.coerceAtMost(1.7f), 1.8f)
+                    player.playSound(SoundEvents.NOTE_BLOCK_BELL.value(), volume.coerceAtMost(1.7f), 1.95f)
                 }
             }
         }
@@ -130,8 +128,8 @@ class PickupsTracker(
 
         for (raw in ids) {
             val identifier = Identifier.tryParse(raw) ?: continue
-            if (!Registries.ITEM.containsId(identifier)) continue
-            result.add(Registries.ITEM.get(identifier))
+            if (!BuiltInRegistries.ITEM.containsKey(identifier)) continue
+            result.add(BuiltInRegistries.ITEM.getValue(identifier))
         }
 
         return if (result.isEmpty()) null else result

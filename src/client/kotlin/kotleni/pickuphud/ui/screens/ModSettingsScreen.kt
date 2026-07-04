@@ -16,11 +16,10 @@ import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import net.minecraft.network.chat.Component
 import net.minecraft.ChatFormatting
-import net.minecraft.client.gui.GuiGraphicsExtractor // 26.1 rename
-import net.minecraft.client.DeltaTracker
-import net.minecraft.client.gui.components.events.GuiEventListener
-import net.minecraft.client.gui.components.Renderable
-import net.minecraft.client.gui.narration.NarratableEntry
+import net.minecraft.client.gui.GuiGraphicsExtractor
+import kotlin.math.max
+import kotlin.math.min
+
 
 class ModSettingsScreen(private val parent: Screen?) : Screen(Component.literal("")) {
     private data class SettingsPage(
@@ -37,6 +36,15 @@ class ModSettingsScreen(private val parent: Screen?) : Screen(Component.literal(
     private val modConfigCopy: ModConfig = ModConfig.INSTANCE.copy()
 
     private var yOffset = 0
+    private var scrollY = 0
+    private var previewMessages: List<PickupMessage> = emptyList()
+    private val contentTop get() = 54
+    private val contentBottom get() = height - 84
+    private val maxScrollY get(): Int {
+        val totalContent = yOffset + 54
+        val available = contentBottom - contentTop
+        return max(0, totalContent - available)
+    }
 
     private fun buildPreviewMessages(now: Long): List<PickupMessage> {
         val messages = mutableListOf<PickupMessage>(
@@ -51,6 +59,14 @@ class ModSettingsScreen(private val parent: Screen?) : Screen(Component.literal(
         return messages
     }
 
+    private fun rebuildPreview() {
+        previewMessages = try {
+            buildPreviewMessages(System.currentTimeMillis())
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
     private fun switchPage(delta: Int) {
         val lastIndex = pages.lastIndex
         currentPageIndex = (currentPageIndex + delta + pages.size) % pages.size
@@ -59,7 +75,7 @@ class ModSettingsScreen(private val parent: Screen?) : Screen(Component.literal(
     }
 
     private fun addSettingToggle(setting: ModSetting<Boolean>) {
-        val rowY = 54 + yOffset
+        val rowY = 54 + yOffset - scrollY
 
         addRenderableWidget(StringWidget(
             this.width / 2 - 155,
@@ -87,7 +103,7 @@ class ModSettingsScreen(private val parent: Screen?) : Screen(Component.literal(
 
     private fun addSettingIntField(setting: ModSetting<Int>) {
         val intValue = setting.value as ModSettingValue.ValueInt
-        val rowY = 54 + yOffset
+        val rowY = 54 + yOffset - scrollY
 
         addRenderableWidget(StringWidget(
             this.width / 2 - 155,
@@ -127,6 +143,7 @@ class ModSettingsScreen(private val parent: Screen?) : Screen(Component.literal(
 
     override fun init() {
         yOffset = 0
+        rebuildPreview()
 
         addRenderableWidget(
             Button.builder(Component.literal("<")) { _ ->
@@ -150,7 +167,7 @@ class ModSettingsScreen(private val parent: Screen?) : Screen(Component.literal(
 
         addRenderableWidget(
             Button.builder(Component.literal("Tracked Items...")) { _ ->
-                minecraft?.setScreen(TrackedItemsScreen(this as Screen, modConfigCopy))
+                minecraft.setScreenAndShow(TrackedItemsScreen(this as Screen, modConfigCopy))
             }
                 .bounds(this.width / 2 - 60, this.height - 56, 120, 20)
                 .build()
@@ -175,14 +192,13 @@ class ModSettingsScreen(private val parent: Screen?) : Screen(Component.literal(
         )
     }
 
-    override fun render(context: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, deltaTracker: DeltaTracker) {
-        val now = System.currentTimeMillis()
-        val previewMessages = buildPreviewMessages(now)
-
-        // Ensure PickupsMessagesRenderer is also updated to take GuiGraphicsExtractor
+    override fun extractRenderState(context: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTick: Float) {
+        if (previewMessages.isEmpty()) {
+            rebuildPreview()
+        }
         PickupsMessagesRenderer.render(context, font, previewMessages, modConfigCopy)
 
-        super.render(context, mouseX, mouseY, deltaTracker)
+        super.extractRenderState(context, mouseX, mouseY, partialTick)
 
         context.centeredText(
             font,
@@ -209,7 +225,16 @@ class ModSettingsScreen(private val parent: Screen?) : Screen(Component.literal(
         )
     }
 
+    override fun mouseScrolled(mouseX: Double, mouseY: Double, horizontalAmount: Double, verticalAmount: Double): Boolean {
+        val prev = scrollY
+        scrollY = (scrollY - (verticalAmount * 20).toInt()).coerceIn(0, maxScrollY)
+        if (prev != scrollY) {
+            rebuildWidgets()
+        }
+        return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount)
+    }
+
     override fun onClose() {
-        minecraft?.setScreen(parent)
+        parent?.let { minecraft.setScreenAndShow(it) }
     }
 }

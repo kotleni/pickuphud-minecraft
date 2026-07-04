@@ -14,11 +14,13 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(ItemEntity.class)
 public abstract class ItemEntityMixin {
     @Inject(
-            method = "playerTouch", at = @At(
-            value = "HEAD", target = "Lnet/minecraft/entity/player/PlayerEntity;increaseStat(Lnet/minecraft/stat/Stat;I)V"
+            method = "playerTouch",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/world/entity/player/Player;awardStat(Lnet/minecraft/stats/Stat;I)V"
+            )
     )
-    )
-    public void onPlayerPickup(Player player, CallbackInfo ci, @Local ItemStack stack) {
+    public void onPlayerPickup(Player player, CallbackInfo ci, @Local(ordinal = 0) ItemStack stack) {
         if (player instanceof ServerPlayer serverPlayer && !stack.isEmpty()) {
             ItemPickupCallback.EVENT.invoker().onPickup(serverPlayer, stack);
         }

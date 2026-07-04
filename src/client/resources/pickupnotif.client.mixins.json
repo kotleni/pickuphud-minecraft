@@ -4,6 +4,7 @@
   "package": "kotleni.pickupnotif.mixin.client",
   "compatibilityLevel": "JAVA_21",
   "client": [
+    "RenderPassScissorFixMixin"
   ],
   "injectors": {
     "defaultRequire": 1

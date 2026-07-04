@@ -1,6 +1,6 @@
 package kotleni.pickupnotif.client
 
-import net.minecraft.item.ItemStack
+import net.minecraft.world.item.ItemStack
 
 sealed class PickupMessage(
     var createTime: Long

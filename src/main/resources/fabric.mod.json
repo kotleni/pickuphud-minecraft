@@ -41,14 +41,13 @@
   "depends": {
     "fabricloader": ">=${loader_version}",
     "fabric-language-kotlin": ">=${kotlin_loader_version}",
-    "fabric": "*",
     "minecraft": "${minecraft_version_range}"
   },
   "custom" : {
     "modmenu" : {
       "links" : {
         "modrinth" : "https://modrinth.com/project/pickup-hud",
-        "discord" : "https://discord.gg/BSDGKWk72c"
+        "discord" : "https://discord.gg/CPbpsX33yG"
       },
       "update_checker": true
     }

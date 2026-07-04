@@ -1,7 +1,7 @@
 package kotleni.pickupnotif.client
 
 import kotleni.pickuphud.ModConfig
-import net.minecraft.item.ItemStack
+import net.minecraft.world.item.ItemStack
 
 class PickupsManager {
     private var pickupMessages: ArrayList<PickupMessage> = arrayListOf()
@@ -18,20 +18,20 @@ class PickupsManager {
         var prevMessage: PickupMessage.Item? = null
         for (message in pickupMessages) {
             if (message !is PickupMessage.Item) continue
-            if (!ItemStack.areItemsAndComponentsEqual(message.stack, stack)) continue
+            if (!ItemStack.isSameItemSameComponents(message.stack, stack)) continue
             prevMessage = message
             break
         }
 
         if (prevMessage != null) {
-            prevMessage.increaseCount += stack.count
+            prevMessage.increaseCount += stack.count()
             prevMessage.totalCount = totalItemsOfThisType
             prevMessage.createTime = System.currentTimeMillis()
         } else {
             pickupMessages.add(
                 PickupMessage.Item(
                     stack.copy(),
-                    stack.count,
+                    stack.count(),
                     totalItemsOfThisType,
                     System.currentTimeMillis(),
                 )
